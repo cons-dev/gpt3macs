@@ -20,10 +20,16 @@ A novel system for providing an exciting natural language nondeterministic user 
 
 However, building it was a very fun experience and was in some senses exciting: it /feels/ like we are not too far off from true natural language programming, though I remain skeptical of claims that GPT-3 has cracked that. Particularly there is a little bit of me that is excitied about the prospects of someday simply describing an algorithm or patch to existing code to a program in natural language and seeing that, for the most part, it gets the details right and produces something that functions.
 
+
+
 * Background
 A basic understanding of Emacs lisp is really all that is required to understand how this product was made. Otherwise you don't need to know much.
 
 * Substantiation
+** A Note on Architecture
+If you were going to seriously do something like this I would recommend generating a diverse set of training data for your model, preferably tens of thousands of examples containing snippets. You might be able to do this automatically by adding [[https://www.emacswiki.org/emacs/Advice][advise]] to the ~counsel-M-x~ or similar command function in Emacs.
+
+However, I quickly realized that this would take a lot of time to do and so I did what I do best and gave up on it. In the future I might create an automated system to collect information for it, but since I have developed an interest in Prolog I feel that my efforts would be better spent on creating Prolog related training data.
 ** Licensing Nonsense
 Here we license it under the artistic license mostly because it is useless.
 #+BEGIN_SRC emacs-lisp :tangle gpt3macs.el

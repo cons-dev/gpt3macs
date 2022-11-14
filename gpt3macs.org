@@ -1,0 +1,197 @@
+:PROPERTIES:
+:ID:       aa08611a-6fab-4e18-b096-86a1bc04798c
+:END:
+#+TITLE: GPT3macs
+#+AUTHOR: Maria Mond
+#+OPTIONS: toc:nil
+
+* Executive Summary
+:PROPERTIES:
+:UNNUMBERED: notoc
+:END:
+A novel system for providing an exciting natural language nondeterministic user interface.
+- Exciting nondeterminism so you don't /really/ know what it will do!
+- 
+
+#+LATEX: \clearpage
+* Introduction
+~GPT3macs~ is essentially a natural language user interface to emacs. Which allows the user to solve complex problems without understanding complex chords. Entire documents can be written using GPT3macs and in fact, a large portion of this document (including this text here) was! It would be important to note here that this is completely useless and was made as a toy project to try to make a nautral language user interface.
+
+However, building it was a very fun experience and was in some senses exciting: it /feels/ like we are not too far off from true natural language programming, though I remain skeptical of claims that GPT-3 has cracked that. Particularly there is a little bit of me that is excitied about the prospects of someday simply describing an algorithm or patch to existing code to a program in natural language and seeing that, for the most part, it gets the details right and produces something that functions.
+
+* Background
+A basic understanding of Emacs lisp is really all that is required to understand how this product was made. Otherwise you don't need to know much.
+
+* Substantiation
+** Licensing Nonsense
+Here we license it under the artistic license mostly because it is useless.
+#+BEGIN_SRC emacs-lisp :tangle gpt3macs.el
+;; gpt3macs.el --- Bringing your Emacs experience into the FUTURE!  -*- lexical-binding: t -*-
+
+;; This file is free software; you can redistribute it and/or modify
+;; it under the terms of the GNU General Public License as published by
+;; the Free Software Foundation; either version 3, or (at your option)
+;; any later version.
+
+;; This file is distributed in the hope that it will be useful,
+;; but WITHOUT ANY WARRANTY; without even the implied warranty of
+;; MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+;; GNU General Public License for more details.
+
+;; You should have received a copy of the GNU General Public License
+;; along with this program.  If not, see <http://www.gnu.org/licenses/>.
+#+END_SRC
+** Dependencies
+Thankfully we only depend on one package, ~request~ for implementing our API call.
+#+BEGIN_SRC emacs-lisp :tangle gpt3macs.el
+(use-package request)
+#+END_SRC
+
+** User Settings
+*** OpenAI Key
+The key, you want to set this in your main file, preferably somewhere that is not uploaded to github.
+#+BEGIN_SRC emacs-lisp :tangle gpt3macs.el
+(defcustom gpt3macs-openai-key nil
+  "Your OpenAI API key."
+  :group 'gpt3macs
+  :type 'string)
+#+END_SRC
+
+#+RESULTS:
+: gpt3macs-openai-key
+
+*** Model
+The model ~text-davinci-002~ is selected as it tends to generate the most coherent results consistently.
+#+BEGIN_SRC emacs-lisp :tangle gpt3macs.el
+(defcustom gpt3macs-model "text-davinci-002"
+  "The model used by gpt3macs."
+  :group 'gpt3macs
+  :type '(choice
+          (const :tag "text-davinci-002" "text-davinci-002")
+          (const :tag "text-davinci-001" "text-davinci-001")
+          (const :tag "text-curie-001" "text-curie-002")
+          (const :tag "text-babbage-001" "text-babbage-001")
+          (const :tag "text-ada-001" "text-ada-001")
+          string))
+#+END_SRC
+
+#+RESULTS:
+: gpt3macs-model
+
+*** Max Tokens
+999 tokens on the wall 999 tokens. Take one down pass it around, 998 tokens in the buffer.
+#+BEGIN_SRC emacs-lisp :tangle gpt3macs.el
+(defcustom gpt3macs-max-tokens 1000
+  "The maximum number of tokens it can generate."
+  :group 'gpt3macs
+  :type 'number)
+#+END_SRC
+
+#+RESULTS:
+: gpt3macs-max-tokens
+
+*** Temperature
+How random the answers will be, keep this at 0 as more randomness is not what you want.
+#+BEGIN_SRC emacs-lisp :tangle gpt3macs.el
+(defcustom gpt3macs-temperature 0
+  "How much entropy is in the model, preferably between 0 and 1."
+  :group 'gpt3macs
+  :type 'number)
+#+END_SRC
+
+#+RESULTS:
+: gpt3macs-temperature
+
+*** Prompt
+A prompt that is used to set the context and provide some style hints to gpt3macs.
+#+BEGIN_SRC emacs-lisp :tangle gpt3macs.el
+(defcustom gpt3macs-prompt "
+split window vertically ->
+(split-window-vertically):HALT:
+delete the previous sexp ->
+(kill-region (point) (progn (backward-sexp) (point))):HALT:
+add a bash shebang to the head of the file ->
+(save-excursion (goto-char (point-min)) (insert \"#!/bin/bash\n\")):HALT:
+create a new predicate named \"cards_balances\" ->
+(save-excursion (insert \"\ncards_balances(Cards, Balances) :- \")):HALT:
+open a new file named myfile.txt ->
+(find-file \"myfile.txt\"):HALT:
+%s ->"
+  "A prompt for GPT3macs to set the context."
+  :group 'gpt3macs
+  :type 'string)
+#+END_SRC
+
+#+RESULTS:
+: gpt3macs-prompt
+
+*** Stop Code
+GPT-3 uses a stop code to indicate when text is done generating, you need to set this to match the stop code in the prompt.
+#+BEGIN_SRC emacs-lisp :tangle gpt3macs.el
+(defcustom gpt3macs-stop ":HALT:"
+  "The string of characters to indicate that the model should stop
+generating."
+  :group 'gpt3macs
+  :type 'string)
+#+END_SRC
+
+#+RESULTS:
+: gpt3macs-stop
+
+*** Automatic Execution
+If you feel the urge to let chaos reign and give OpenAI the freedom to run absolutely any code they want on your machine, then set this to ~t~.
+#+BEGIN_SRC emacs-lisp :tangle gpt3macs.el
+(defcustom gpt3macs-automatic-p nil
+  "If you want gpt3macs to execute without allowing you to double-check it."
+  :group 'gpt3macs
+  :type 'boolean)
+#+END_SRC
+
+#+RESULTS:
+: gpt3macs-automatic-p
+
+
+** Interface Function
+The function. It is simple synchronous code. Async code may be better in the future.
+#+BEGIN_SRC emacs-lisp :tangle gpt3macs.el
+(defun gpt3macs-command ()
+  (interactive)
+  (let ((command (read-from-minibuffer "Command: ")))    
+    (request
+      "https://api.openai.com/v1/completions"
+      :type "POST"
+      :data (json-encode
+             `(("model" . ,gpt3macs-model)
+               ("prompt" . ,(format gpt3macs-prompt command))
+               ("max_tokens" . ,gpt3macs-max-tokens)
+               ("temperature" . ,gpt3macs-temperature)
+               ("stop" . ,gpt3macs-stop)))
+      :headers `(("Authorization" . ,(format "Bearer %s"
+                                             gpt3macs-openai-key))
+                 ("Content-Type" . "application/json"))
+      :sync t
+      :parser 'json-read
+      :success (cl-function
+                (lambda (&key data &allow-other-keys)
+                  (print data)
+                  (let ((result (->> (elt (alist-get 'choices data) 0)
+                                     (alist-get 'text)
+                                     read)))
+                    (when (or gpt3macs-automatic-p
+                              (y-or-n-p (format "Execute: %s " result)))
+                      (eval result))))))))
+#+END_SRC
+
+#+RESULTS:
+: gpt3macs-command
+
+
+** Footers
+#+BEGIN_SRC emacs-lisp :tangle gpt3macs.el
+(provide 'gpt3macs)
+;;; gpt3macs.el ends here
+#+END_SRC
+
+
+#+RESULTS:
+: gpt3macs-command

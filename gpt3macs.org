@@ -10,10 +10,11 @@
 :UNNUMBERED: notoc
 :END:
 A novel system for providing an exciting natural language nondeterministic user interface.
+- Uses the latest in cutting-edge neurosymbolic computing (we made a transformer output machine-readable stuff)
+- Natural language programming so you can feel like you are in star trek.
 - Exciting nondeterminism so you don't /really/ know what it will do!
-- 
 
-#+LATEX: \clearpage
+#+TOC: headlines 2
 * Introduction
 ~GPT3macs~ is essentially a natural language user interface to emacs. Which allows the user to solve complex problems without understanding complex chords. Entire documents can be written using GPT3macs and in fact, a large portion of this document (including this text here) was! It would be important to note here that this is completely useless and was made as a toy project to try to make a nautral language user interface.
 
